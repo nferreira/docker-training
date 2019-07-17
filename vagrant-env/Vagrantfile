@@ -1,0 +1,34 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+hosts = {
+  "n1" => "11.0.1.10",
+  "n2" => "11.0.1.11",
+  "n3" => "11.0.1.12",
+  "n4" => "11.0.1.13"
+}
+disk = './secondDisk.vdi'
+Vagrant.configure("2") do |config|
+  # always use Vagrants insecure key
+  config.ssh.insert_key = false
+  # forward ssh agent to easily ssh into the different machines
+  config.ssh.forward_agent = true
+
+  check_guest_additions = false
+  functional_vboxsf     = false
+
+  config.vm.box = "ubuntu/xenial64"
+  hosts.each do |name, ip|
+    config.vm.define name do |machine|
+      machine.vm.hostname = name
+      machine.vm.network :private_network, ip: ip
+      machine.vm.provider "virtualbox" do |v|
+        v.name = name
+        disk = "./#{name}-second-disk.vdi"
+        unless File.exist?(disk)
+          v.customize ['createhd', '--filename', disk, '--variant', 'Fixed', '--size', 20 * 1024]
+        end
+        v.customize ['storageattach', :id,  '--storagectl', 'SCSI', '--port', 3, '--device', 0, '--type', 'hdd', '--medium', disk]
+      end
+    end
+  end
+end
